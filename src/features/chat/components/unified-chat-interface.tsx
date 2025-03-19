@@ -10,7 +10,7 @@ import {
   Trash2, 
   ArrowUp, 
   Camera, 
-  Image as ImageIcon, 
+  ImageIcon, 
   X as XIcon,
   Calendar
 } from 'lucide-react';
@@ -46,7 +46,6 @@ export default function UnifiedChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Initialize with welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
@@ -60,7 +59,6 @@ export default function UnifiedChatInterface() {
     }
   }, [messages]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -76,36 +74,28 @@ export default function UnifiedChatInterface() {
     setMessages(prev => [...prev, messageWithId]);
   };
 
-// src/features/chat/components/unified-chat-interface.tsx
-// Add better error handling in the handleSubmit function:
-
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if ((!message.trim() && !uploadedImage) || isLoading) return;
     
-    // If there's an image uploaded
     if (uploadedImage && uploadedFile) {
-      // Add user message with image
       addMessage({
         content: message.trim() ? `${message} (with image)` : 'Image for analysis',
         role: 'user',
         metadata: { imageUrl: uploadedImage }
       });
       
-      // Clear input
       setMessage('');
       setIsLoading(true);
       
       try {
-        // Create FormData to send image
         const formData = new FormData();
         formData.append('image', uploadedFile);
         formData.append('prompt', message || "Analyze this medical image");
         
-        // Send to API with timeout handling
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         
         const response = await fetch('/api/image-analysis', {
           method: 'POST',
@@ -121,20 +111,16 @@ const handleSubmit = async (e: React.FormEvent) => {
         
         const result = await response.json();
         
-        // Add assistant response
         addMessage({
           content: formatMarkdownResponse(result.response || "I've analyzed your image."),
           role: 'assistant'
         });
         
-        // Clear uploaded image/file
         setUploadedImage(null);
         setUploadedFile(null);
       } catch (error: any) {
         console.error('Error processing image:', error);
-        
-        // Provide more specific error messages
-        let errorMessage = 'Sorry, I encountered an error analyzing your image.';
+ let errorMessage = 'Sorry, I encountered an error analyzing your image.';
         if (error.name === 'AbortError') {
           errorMessage = 'The request took too long to complete. Our backend services might be experiencing high traffic or connectivity issues. Please try again in a moment.';
         } else if (error.message.includes('failed to connect')) {
@@ -151,26 +137,21 @@ const handleSubmit = async (e: React.FormEvent) => {
       return;
     }
     
-    // For text-only messages
     if (message.trim()) {
-      // Add user message
       addMessage({
         content: message,
         role: 'user'
       });
       
-      // Clear input
       setMessage('');
       setIsLoading(true);
       
       try {
-        // Determine if this might be a symptom query for automatic routing
         const isSymptomQuery = /symptom|pain|ache|feeling|suffering|hurts|sick/i.test(message);
         const chatType = isSymptomQuery ? 'symptom' : 'clinical';
         
-        // Send to API with timeout handling
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         
         const response = await fetch(`/api/chat/${chatType}`, {
           method: 'POST',
@@ -192,12 +173,10 @@ const handleSubmit = async (e: React.FormEvent) => {
         
         const data = await response.json();
         
-        // Check if we should show booking interface (for symptom responses)
         if (data.show_booking && data.specialists) {
           setShowBooking(true);
           setSpecialists(data.specialists);
           
-          // Add assistant response with booking metadata
           addMessage({
             content: formatMarkdownResponse(data.response),
             role: 'assistant',
@@ -207,7 +186,6 @@ const handleSubmit = async (e: React.FormEvent) => {
             }
           });
         } else {
-          // Add regular assistant response
           addMessage({
             content: formatMarkdownResponse(data.response || "I'm sorry, I couldn't process your request properly. Please try again."),
             role: 'assistant'
@@ -215,9 +193,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         }
       } catch (error: any) {
         console.error('Error getting response:', error);
-        
-        // Provide more specific error messages
-        let errorMessage = 'Sorry, I encountered an error processing your request. Please try again.';
+ let errorMessage = 'Sorry, I encountered an error processing your request. Please try again.';
         if (error.name === 'AbortError') {
           errorMessage = 'The request took too long to complete. Our backend services might be experiencing connectivity issues with some external APIs. Please try again in a moment.';
         } else if (error.message.includes('failed to connect')) {
@@ -248,9 +224,9 @@ const handleSubmit = async (e: React.FormEvent) => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-16rem)]">
+    <div className="flex flex-col h-full">
       <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full w-full">
+        <ScrollArea className="h-[calc(100vh-7rem)] w-full">
           <div className="flex flex-col space-y-4 p-4 pb-10">
             {messages.map((msg) => (
               <div 
@@ -269,7 +245,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                     </Avatar>
                   )}
                   <div className="space-y-2">
-                    {/* Display image if present */}
                     {(msg.metadata?.imageUrl || msg.metadata?.imageKey) && (
                       <div className="mb-2 overflow-hidden rounded-md border">
                         <img 
@@ -280,14 +255,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                       </div>
                     )}
                     
-                    {/* Message content */}
                     <div className={`prose prose-sm max-w-none break-words ${msg.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
                       <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
                         {msg.content}
                       </ReactMarkdown>
                     </div>
                     
-                    {/* Show appointment booking UI when applicable */}
                     {msg.metadata?.showBooking && msg.metadata?.specialists && (
                       <div className="mt-4 border-t pt-4">
                         <AppointmentBooking specialists={msg.metadata.specialists} />
@@ -305,9 +278,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </ScrollArea>
       </div>
-      
-      <div className="border-t bg-white dark:bg-gray-800 p-4 shadow-sm">
-        <form onSubmit={handleSubmit} className="flex w-full space-x-2">
+ <div className="border-t bg-white dark:bg-gray-800 p-4 shadow-sm fixed bottom-0 left-0 right-0">
+        <form onSubmit={handleSubmit} className="flex w-full space-x-2 max-w-5xl mx-auto">
           {uploadedImage && (
             <div className="relative mr-2 flex items-center">
               <div className="h-10 w-10 overflow-hidden rounded-md border">
